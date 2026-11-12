@@ -33,8 +33,9 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Enable required GCP APIs
+        continue-on-error: true
         run: |
-          gcloud services enable run.googleapis.com artifactregistry.googleapis.com --project=${{ env.PROJECT_ID }}
+          gcloud services enable run.googleapis.com artifactregistry.googleapis.com --project=${{ env.PROJECT_ID }} || true
 
       - name: Ensure Artifact Registry repository exists
         run: |
