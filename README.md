@@ -29,20 +29,38 @@ never be placed in browser code or committed.
 Use synthetic demonstration data only. Running the workflow sends those case
 facts to the Gemini API. No email or other external action is performed.
 
-## Cloud Run persistence note
+## CI/CD Pipeline
 
-The Docker image stores SQLite at `/data/chase-desk.sqlite`. A Cloud Run
-container filesystem is ephemeral; mount durable storage at `/data` before
-using this database in Cloud Run. For this SQLite prototype, use a Filestore
-NFS volume, keep the service to one instance, and verify Filestore NFS
-connectivity and SQLite file locking for your deployment. Do not scale
-multiple app instances against this SQLite file. Cloud SQL is the recommended
-option if you need reliable multi-instance scaling.
+The repository uses GitHub Actions for automated testing, container packaging, and deployment:
 
-The earlier deployment request specified public access. Until authentication
-and authorization are added, use only fictional demo data: the case API can be
-read and edited by anyone who can reach a public deployment. Do not store real
-client information in a public instance.
+- **Continuous Integration (`.github/workflows/ci.yml`):**
+  - Runs on every push and pull request to `main`.
+  - Installs dependencies on Node.js 22 (`npm ci`).
+  - Runs syntax validation and TypeScript compilation (`npm test`).
+  - Builds the production Vite frontend bundle (`npm run build`).
+  - Validates container image packaging using Docker Buildx against the multi-stage `Dockerfile`.
 
-CI/CD setup remains paused. No GitHub repository was created and no deployment
-was started.
+- **Continuous Deployment (`.github/workflows/cd.yml`):**
+  - Triggers automatically on push to `main`.
+  - Builds the production Docker image.
+  - Automatically publishes container images to **GitHub Container Registry (GHCR)**:
+    - `ghcr.io/im-poojitha/chase-desk:latest`
+    - `ghcr.io/im-poojitha/chase-desk:<commit-sha>`
+
+### Running the Deployed Container
+
+Pull and run the latest published container image directly with Docker:
+
+```bash
+docker pull ghcr.io/im-poojitha/chase-desk:latest
+docker run -d -p 8080:8080 --name chase-desk ghcr.io/im-poojitha/chase-desk:latest
+```
+
+The application is reachable at `http://localhost:8080`.
+
+## GCP Docker Orchestration
+
+The repository includes Google Cloud Platform native orchestration specifications:
+
+- **Google Cloud Build (`cloudbuild.yaml`):** Declarative GCP pipeline to build the container, push to Google Artifact Registry, and deploy to Cloud Run.
+- **Google Cloud Run (`service.yaml`):** Knative service specification configuring container concurrency, resource limits, and health check probes.
