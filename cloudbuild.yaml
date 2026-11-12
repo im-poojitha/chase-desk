@@ -1,0 +1,56 @@
+# Google Cloud Build — Native Docker Orchestration Pipeline
+# Builds, tests, tags, pushes to Google Artifact Registry, and deploys to Cloud Run
+
+steps:
+  # Step 1: Build the multi-stage Docker container
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-image"
+    args:
+      - "build"
+      - "-t"
+      - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:${COMMIT_SHA}"
+      - "-t"
+      - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:latest"
+      - "--cache-from"
+      - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:latest"
+      - "."
+
+  # Step 2: Push container images to Google Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-image"
+    args:
+      - "push"
+      - "--all-tags"
+      - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk"
+
+  # Step 3: Deploy container to Google Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-cloudrun"
+    entrypoint: "gcloud"
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:${COMMIT_SHA}"
+      - "--region"
+      - "${_LOCATION}"
+      - "--platform"
+      - "managed"
+      - "--port"
+      - "8080"
+      - "--set-env-vars"
+      - "NODE_ENV=production,SQLITE_DB_PATH=/data/chase-desk.sqlite"
+      - "--allow-unauthenticated"
+
+substitutions:
+  _LOCATION: "us-central1"
+  _REPOSITORY: "chase-desk-docker"
+  _SERVICE_NAME: "chase-desk"
+
+images:
+  - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:${COMMIT_SHA}"
+  - "${_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/chase-desk:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY

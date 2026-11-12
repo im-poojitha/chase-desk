@@ -1,0 +1,65 @@
+name: Continuous Deployment (GCP Cloud Run)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  GAR_REPOSITORY: chase-desk-docker
+  SERVICE_NAME: chase-desk
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Google Workload Identity Federation (recommended) or Service Account key
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SERVICE_ACCOUNT }}
+        continue-on-error: true
+        id: gcp-auth
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        if: steps.gcp-auth.outcome == 'success'
+
+      - name: Authorize Docker with Artifact Registry
+        if: steps.gcp-auth.outcome == 'success'
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Docker image
+        if: steps.gcp-auth.outcome == 'success'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:latest
+
+      - name: Deploy to Cloud Run
+        if: steps.gcp-auth.outcome == 'success'
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: |
+            --port=8080
+            --allow-unauthenticated
+            --set-env-vars=NODE_ENV=production,SQLITE_DB_PATH=/data/chase-desk.sqlite
