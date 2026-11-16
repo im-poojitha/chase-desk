@@ -44,7 +44,7 @@ steps:
       - "--allow-unauthenticated"
 
 substitutions:
-  _LOCATION: "us-central1"
+  _LOCATION: "asia-south1"
   _REPOSITORY: "chase-desk-docker"
   _SERVICE_NAME: "chase-desk"
 

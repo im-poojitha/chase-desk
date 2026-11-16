@@ -15,7 +15,7 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       containers:
-        - image: us-central1-docker.pkg.dev/PROJECT_ID/chase-desk-docker/chase-desk:latest
+        - image: asia-south1-docker.pkg.dev/PROJECT_ID/chase-desk-docker/chase-desk:latest
           ports:
             - name: http1
               containerPort: 8080

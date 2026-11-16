@@ -41,11 +41,13 @@ The repository uses GitHub Actions for automated testing, container packaging, a
   - Validates container image packaging using Docker Buildx against the multi-stage `Dockerfile`.
 
 - **Continuous Deployment (`.github/workflows/cd.yml`):**
-  - Triggers automatically on push to `main`.
-  - Builds the production Docker image.
-  - Automatically publishes container images to **GitHub Container Registry (GHCR)**:
-    - `ghcr.io/im-poojitha/chase-desk:latest`
-    - `ghcr.io/im-poojitha/chase-desk:<commit-sha>`
+  - Triggers automatically on push to `main` or manual trigger via `workflow_dispatch`.
+  - Builds the production Docker image using Docker Buildx on GitHub Actions runners (no local Docker application required).
+  - Authenticates securely to Google Cloud using GCP Service Account key (`GCP_SA_KEY`) and project ID (`GCP_PROJECT_ID`).
+  - Publishes container images to **Google Artifact Registry** in Mumbai (`asia-south1`):
+    - `asia-south1-docker.pkg.dev/chase-desk/chase-desk-docker/chase-desk:latest`
+    - `asia-south1-docker.pkg.dev/chase-desk/chase-desk-docker/chase-desk:<commit-sha>`
+  - Deploys container service to **Google Cloud Run** in `asia-south1` (Mumbai).
 
 ### Running the Deployed Container
 
