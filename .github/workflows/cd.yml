@@ -27,6 +27,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -63,6 +64,7 @@ jobs:
             NODE_ENV=production
             SQLITE_DB_PATH=/data/chase-desk.sqlite
           flags: |
+            --project=${{ env.PROJECT_ID }}
             --port=8080
             --allow-unauthenticated
 
